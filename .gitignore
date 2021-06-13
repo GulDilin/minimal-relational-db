@@ -1,0 +1,10 @@
+/.idea/
+/CMakeCache.txt
+/CMakeFiles/
+/cmake-build-debug/
+/*.vcxproj
+/*.cmake
+/*.sln
+/*.vcxproj.filters
+/spo_lab-1.5
+/Makefile
