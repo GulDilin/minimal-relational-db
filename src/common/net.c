@@ -97,3 +97,18 @@ bool validate_ip(char * address) {
 bool validate_port(int port) {
     return port < 65535 && port > 1;
 }
+
+static size_t read_buffer (int socket, unsigned max_length, uint8_t *out) {
+    size_t cur_len = 0;
+    size_t nread;
+    while ((nread = read(socket, out+cur_len, 1)) != 0)
+    {
+        cur_len += nread;
+        if (cur_len == max_length)
+        {
+            fprintf(stderr, "max message length exceeded\n");
+            exit(1);
+        }
+    }
+    return cur_len;
+}

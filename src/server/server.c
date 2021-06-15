@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include "server.h"
 
 void *serve_client(void *socket_desc);
@@ -54,6 +53,7 @@ void define_message_by_return_code(int return_code, Common__Response * response,
 
 Common__Response execute_command_create (Common__Request * request) {
     Common__Response response = COMMON__RESPONSE__INIT;
+    response.command_code = request->command_code;
     if (request->n_columns < 1) {
         response.status_code = ERROR_END;
         response.text = ERROR_MESSAGE_NO_COLUMNS;
@@ -81,29 +81,13 @@ Common__Response execute_command(Common__Request * request) {
     }
 }
 
-static size_t read_buffer (int socket, unsigned max_length, uint8_t *out) {
-    size_t cur_len = 0;
-    size_t nread;
-    while ((nread = read(socket, out+cur_len, 1)) != 0)
-    {
-        cur_len += nread;
-        if (cur_len == max_length)
-        {
-            fprintf(stderr, "max message length exceeded\n");
-            exit(1);
-        }
-    }
-    return cur_len;
-}
-
-
 void *serve_client(void *socket_desc) {
     int sock = *(int *) socket_desc;
 
     Common__Request *request;
-    uint8_t buf[MAX_MSG_SIZE];
+    uint8_t buf[BUFSIZ];
     size_t msg_len;
-    while((msg_len = read_buffer (sock, MAX_MSG_SIZE, buf )) != 0) {
+    while((msg_len = read_buffer (sock, BUFSIZ, buf )) != 0) {
         request = common__request__unpack(NULL, msg_len, buf);
         Common__Response response;
         if (request == NULL) {

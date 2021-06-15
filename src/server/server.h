@@ -2,7 +2,6 @@
 #ifndef SPO_LAB_1_5_SERVER_H
 #define SPO_LAB_1_5_SERVER_H
 
-#include <stdlib.h>
 #include <unistd.h>
 #include <stdlib.h>
 
@@ -25,6 +24,7 @@
 #include "../cursor/cursor.h"
 #include "../common/net.pb-c.h"
 #include "../common/net.h"
+#include <stdint.h>
 
 #define MAX_MSG_SIZE 1024
 

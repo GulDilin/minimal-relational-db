@@ -142,7 +142,7 @@ void   common__response__free_unpacked
   assert(message->base.descriptor == &common__response__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-static const ProtobufCFieldDescriptor common__column_value__field_descriptors[5] =
+static const ProtobufCFieldDescriptor common__column_value__field_descriptors[6] =
 {
   {
     "title",
@@ -172,8 +172,8 @@ static const ProtobufCFieldDescriptor common__column_value__field_descriptors[5]
     "value",
     3,
     PROTOBUF_C_LABEL_OPTIONAL,
-    PROTOBUF_C_TYPE_INT32,
-    offsetof(Common__ColumnValue, has_value),
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
     offsetof(Common__ColumnValue, value),
     NULL,
     NULL,
@@ -204,18 +204,31 @@ static const ProtobufCFieldDescriptor common__column_value__field_descriptors[5]
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "is_start",
+    6,
+    PROTOBUF_C_LABEL_OPTIONAL,
+    PROTOBUF_C_TYPE_BOOL,
+    offsetof(Common__ColumnValue, has_is_start),
+    offsetof(Common__ColumnValue, is_start),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned common__column_value__field_indices_by_name[] = {
   1,   /* field[1] = column_type_code */
   3,   /* field[3] = is_key */
   4,   /* field[4] = is_required */
+  5,   /* field[5] = is_start */
   0,   /* field[0] = title */
   2,   /* field[2] = value */
 };
 static const ProtobufCIntRange common__column_value__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 5 }
+  { 0, 6 }
 };
 const ProtobufCMessageDescriptor common__column_value__descriptor =
 {
@@ -225,7 +238,7 @@ const ProtobufCMessageDescriptor common__column_value__descriptor =
   "Common__ColumnValue",
   "common",
   sizeof(Common__ColumnValue),
-  5,
+  6,
   common__column_value__field_descriptors,
   common__column_value__field_indices_by_name,
   1,  common__column_value__number_ranges,
@@ -297,7 +310,7 @@ const ProtobufCMessageDescriptor common__request__descriptor =
   (ProtobufCMessageInit) common__request__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor common__response__field_descriptors[3] =
+static const ProtobufCFieldDescriptor common__response__field_descriptors[4] =
 {
   {
     "status_code",
@@ -306,6 +319,18 @@ static const ProtobufCFieldDescriptor common__response__field_descriptors[3] =
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
     offsetof(Common__Response, status_code),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "command_code",
+    2,
+    PROTOBUF_C_LABEL_OPTIONAL,
+    PROTOBUF_C_TYPE_INT32,
+    offsetof(Common__Response, has_command_code),
+    offsetof(Common__Response, command_code),
     NULL,
     NULL,
     0,             /* flags */
@@ -337,15 +362,15 @@ static const ProtobufCFieldDescriptor common__response__field_descriptors[3] =
   },
 };
 static const unsigned common__response__field_indices_by_name[] = {
-  1,   /* field[1] = columns */
+  2,   /* field[2] = columns */
+  1,   /* field[1] = command_code */
   0,   /* field[0] = status_code */
-  2,   /* field[2] = text */
+  3,   /* field[3] = text */
 };
-static const ProtobufCIntRange common__response__number_ranges[2 + 1] =
+static const ProtobufCIntRange common__response__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 3, 1 },
-  { 0, 3 }
+  { 0, 4 }
 };
 const ProtobufCMessageDescriptor common__response__descriptor =
 {
@@ -355,10 +380,10 @@ const ProtobufCMessageDescriptor common__response__descriptor =
   "Common__Response",
   "common",
   sizeof(Common__Response),
-  3,
+  4,
   common__response__field_descriptors,
   common__response__field_indices_by_name,
-  2,  common__response__number_ranges,
+  1,  common__response__number_ranges,
   (ProtobufCMessageInit) common__response__init,
   NULL,NULL,NULL    /* reserved[123] */
 };

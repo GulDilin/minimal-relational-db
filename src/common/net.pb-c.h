@@ -29,18 +29,19 @@ struct  Common__ColumnValue
 {
   ProtobufCMessage base;
   char *title;
+  char *value;
   protobuf_c_boolean has_column_type_code;
   int32_t column_type_code;
-  protobuf_c_boolean has_value;
-  int32_t value;
   protobuf_c_boolean has_is_key;
   protobuf_c_boolean is_key;
   protobuf_c_boolean has_is_required;
   protobuf_c_boolean is_required;
+  protobuf_c_boolean has_is_start;
+  protobuf_c_boolean is_start;
 };
 #define COMMON__COLUMN_VALUE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&common__column_value__descriptor) \
-    , NULL, 0, 0, 0, 0, 0, 0, 0, 0 }
+    , NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0 }
 
 
 struct  Common__Request
@@ -60,13 +61,15 @@ struct  Common__Response
 {
   ProtobufCMessage base;
   int32_t status_code;
+  protobuf_c_boolean has_command_code;
+  int32_t command_code;
   size_t n_columns;
   Common__ColumnValue **columns;
   char *text;
 };
 #define COMMON__RESPONSE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&common__response__descriptor) \
-    , 0, 0,NULL, NULL }
+    , 0, 0, 0, 0,NULL, NULL }
 
 
 /* Common__ColumnValue methods */

@@ -7,8 +7,11 @@
 #define COMMAND_CODE_DELETE 3
 #define COMMAND_CODE_INSERT 4
 
+#include <stdint.h>
 #include "stdio.h"
 #include "stdbool.h"
+#include <stdlib.h>
+#include <unistd.h>
 
 #ifdef __WIN32__
 #include "windows.h"
@@ -35,12 +38,14 @@ int socket_listen(const int *connect_socket, int max_clients_amount);
 bool validate_ip(char * address);
 bool validate_port(int port);
 
+static size_t read_buffer (int socket, unsigned max_length, uint8_t *out);
+
 #define PRINTLN printf("\n")
 
 #define ERROR_MESSAGE_CLIENTS_OVERFLOW "Amount of clients is overflowed"
 #define ERROR_MESSAGE_SOCKET_ACCEPT "Socket accept() failed"
 #define ERROR_MESSAGE_CONNECT_NEW_CLIENT "New client cant be connected"
-#define ERROR_MESSAGE_UNDEFINED "Undefined error"
+#define ERROR_MESSAGE_SEND "Send error"
 #define ERROR_MESSAGE_SOCKET_OPEN "Open socket failed"
 #define ERROR_MESSAGE_SOCKET_CONNECT "Connect socket failed"
 #define ERROR_MESSAGE_SOCKET_LISTEN "Listen socket failed"
@@ -63,5 +68,7 @@ bool validate_port(int port);
 #define ERROR_SOCKET_BIND  6
 #define ERROR_SOCKET_LISTEN 7
 #define ERROR_CONNECT 9
+
+#define MAX_MSG_SIZE 1024
 
 #endif //SPO_LAB_1_5_NET_H
