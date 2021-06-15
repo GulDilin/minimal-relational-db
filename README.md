@@ -69,10 +69,71 @@
 - сериалайзер
 - десиреалайзер
 
-## Клиент
+### Клиент
 - синтаксический анализатор
 - сериалайзер
 - десиреалайзер
 - модуль обмена
 - protobuf конвертер
+
+## Подготовка для разработки
+
+### Требования
+- c compiler
+- cmake
+- make
+- nmake (для компиляции protobuf под Windows)
+- protobuf (для редактирования proto формата обмена клиента и сервера)
+- protobuf-c (для редактирования proto формата обмена клиента и сервера)
+
+## Компиляция protobuf
+[github](https://github.com/protocolbuffers/protobuf)
+
+Я использовал Windows и компилировал с помощью cmake.
+[instructions](https://github.com/protocolbuffers/protobuf/blob/master/cmake/README.md)
+В моём случае всё сработало за исключением подключения zlib.
+
+**При использовании Windows есть проблема с zlib, поэтому в 
+CMakeLists.txt пришлось отредактировать строку**
+
+Для исправления этого я принудительно отключил использование zlib заменив строку
+в файле `path/to/protobuf/cmake/CMakeLists.txt`
+```cmake
+set(HAVE_ZLIB 1)
+```
+на 
+```cmake
+set(HAVE_ZLIB 0)
+```
+
+## Компиляция protobuf-c
+[github](https://github.com/protobuf-c/protobuf-c)
+
+Я использовал Windows и следующие команды
+```shell
+cd path/to/protobuf-c/build-cmake
+mkdir build
+cd build
+cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+nmake
+nmake install
+```
+
+Теперь скомпилированные файлы находятся в `path/to/protobuf-c/install`
+
+Необходимо добавить `path/to/protobuf-c/bin` в переменную PATH
+
+## Компиляция proto файлов
+Файлы компилируются с помощью команды
+
+```shell
+cd path/to/spo-lab-1.5/src
+protoc --c_out=. common/*.proto
+```
+
+## Сборка проекта
+1. Компиляция proto файлов
+2. в корне проекта выполнить команду `cmake .`
+
+## Архитектура файлов базы
 

@@ -1,0 +1,5 @@
+message Response {
+  required int32 status_code = 1;
+  optional bool columns_amount = 2;
+  optional string text = 3;
+}
