@@ -1,6 +1,0 @@
-message ColumnValue {
-  required string title = 1;
-  optional int32 column_type_code = 2;
-  optional int32 value = 3;
-  optional bool next_column = 4;
-}

@@ -1,0 +1,22 @@
+package common;
+
+message ColumnValue {
+  required string title = 1;
+  optional int32 column_type_code = 2;
+  optional int32 value = 3;
+  optional bool is_key = 4;
+  optional bool is_required = 5;
+}
+
+message Request {
+  required int32 command_code = 1;
+  required string table_name = 2;
+  repeated ColumnValue columns = 4;
+
+}
+
+message Response {
+  required int32 status_code = 1;
+  repeated ColumnValue columns = 3;
+  optional string text = 4;
+}
