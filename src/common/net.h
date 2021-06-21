@@ -64,11 +64,11 @@ size_t write_buffer (int socket, void * in, unsigned length);
 unsigned long receive_header(int socket);
 int send_header(int socket, unsigned long len);
 
-int send_request(Common__Request * request);
-int send_response(Common__Response * request);
+int send_request(int socket, Common__Request * request);
+int send_response(int socket, Common__Response * request);
 
-int send_request(Common__Request * request);
-int send_response(Common__Response * request);
+int receive_request(int socket, Common__Request ** request);
+int receive_response(int socket, Common__Response ** response);
 
 void print_response_info(Common__Response * response);
 void print_request_info(Common__Request * request);

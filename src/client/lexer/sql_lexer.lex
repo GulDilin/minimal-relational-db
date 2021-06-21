@@ -8,10 +8,19 @@ extern char *yytext;
 
 %%
 select					return SELECT;
+create					return CREATE;
+insert					return INSERT;
+update					return UPDATE;
+delete					return DELETE;
+table					return TABLE;
+number					return NUMBER;
+text					return TEXT;
 from					return FROM;
 where					return WHERE;
 and						return AND;
 \*						return *yytext;
+\(				        return *yytext;
+\)				        return *yytext;
 [,]						return *yytext;
 [=]						return *yytext;
 [a-zA-Z][a-zA-Z0-9]*	return IDENTIFIER;

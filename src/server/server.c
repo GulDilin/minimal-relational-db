@@ -91,20 +91,11 @@ void execute_command(Common__Request * request, Common__Response * response) {
 
 void serve_client(int socket) {
     printf("Serve thread for socket %d created\n", socket);
-    uint8_t buf[BUFSIZ];
-    size_t msg_len;
     do {
-        msg_len = receive_header(socket);
-        msg_len = read(socket, buf, msg_len);
-        if (msg_len < 1) {
-            printf("Cannot read message\n");
-        }
-        printf("Recieved %zu byte\ns", msg_len);
+        printf("--------------WAIT NEW REQUEST FROM CLIENT: %d\n", socket);
         Common__Request * request;
-        request = common__request__unpack(NULL, msg_len, buf);
-        print_request_info(request);
+        receive_request(socket, &request);
 
-        Common__Response response = COMMON__RESPONSE__INIT;
         if (request == NULL) {
             fprintf(stderr, "%s\n", ERROR_MESSAGE_UNPACK);
             client_act_status = INACTIVE;
@@ -113,20 +104,12 @@ void serve_client(int socket) {
             return;
         }
 
+        Common__Response response = COMMON__RESPONSE__INIT;
         execute_command(request, &response);
-        size_t len_send;
-        void *buf_send;
-        len_send = common__response__get_packed_size(&response);
-        buf_send = malloc (len_send);
-        common__response__pack(&response, buf_send);
-
-        print_response_info(&response);
-        send_header(socket, len_send);
-        if (write(socket, buf_send, len_send) < 0) break;
-    } while (msg_len != 0);
+        int response_stat = send_response(socket, &response);
+        if (response_stat == 1) break;
+    } while (client_act_status == ACTIVE);
     close(socket);
-
-//    return NORMAL_END;
 }
 
 void send_connect(int socket) {
@@ -173,7 +156,7 @@ int run_server(int port) {
                 exit(1);
             }
         }
-        printf("Connection accepted; Client Socket: %d\n", client_sock);
+        printf("-----------NEW CONNECTION ACCEPTED; Client Socket: %d\n", client_sock);
         send_connect(client_sock);
         client_act_status = ACTIVE;
         printf("Connection response sent\n");

@@ -84,9 +84,61 @@ int send_header(int socket, unsigned long len) {
     char buffer[BUFSIZ];
     memset(buffer, 0, BUFSIZ);
     snprintf(buffer, BUFSIZ, "%lu", len);
+    printf("Packed size: %lu\n", len);
     write(socket, buffer, BUFSIZ);
     return 0;
 }
+
+int send_request(int socket, Common__Request * request) {
+    size_t len_send = common__request__get_packed_size(request);
+    void * buf_send = malloc(len_send);
+    common__request__pack(request, buf_send);
+
+    send_header(socket, len_send);
+    if (write(socket, buf_send, len_send) == -1) {
+        fprintf(stderr, ERROR_MESSAGE_SEND);
+        return 1;
+    };
+    print_request_info(request);
+    return 0;
+}
+
+int send_response(int socket, Common__Response * response) {
+    size_t len_send = common__response__get_packed_size(response);
+    void * buf_send = malloc (len_send);
+    common__response__pack(response, buf_send);
+    send_header(socket, len_send);
+    if (write(socket, buf_send, len_send) < 0) return 1;
+    print_response_info(response);
+    return 0;
+}
+
+int receive_request(int socket, Common__Request ** request) {
+    uint8_t buf[BUFSIZ];
+    size_t msg_len = receive_header(socket);
+    msg_len = read(socket, buf, msg_len);
+    if (msg_len < 1) {
+        printf("Cannot read message\n");
+        return 1;
+    }
+    printf("Received %zu bytes\n", msg_len);
+    *request = common__request__unpack(NULL, msg_len, buf);
+    if (*request == NULL) return 1;
+    print_request_info(*request);
+    return 0;
+}
+
+int receive_response(int socket, Common__Response ** response) {
+    uint8_t buf[BUFSIZ];
+    size_t msg_len = receive_header(socket);
+    if (msg_len < 1) return 1;
+    msg_len = read(socket, buf, msg_len);
+    *response = common__response__unpack(NULL, msg_len, buf);
+    print_response_info(*response);
+    return 0;
+}
+
+
 
 unsigned long receive_header(int socket) {
     unsigned long response_size;
@@ -145,7 +197,7 @@ void print_request_info(Common__Request * request) {
 }
 
 void print_response_info(Common__Response * response) {
-    printf("Response info:\n\tStatus code:%d\n\tCommand code: %d\n\tN columns: %zu\n\tText: %s\n\n",
+    printf("Response info:\n\tStatus code: %d\n\tCommand code: %d\n\tN columns: %zu\n\tText: %s\n\n",
           response->status_code ,response->command_code, response->n_columns, response->text);
 }
 

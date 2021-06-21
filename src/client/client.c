@@ -20,7 +20,6 @@ void print_column(Common__ColumnValue * column) {
 }
 
 void parse_response(Common__Response *response) {
-    print_response_info(response);
     if (response->status_code != NORMAL_END) return;
 
     if(response->n_columns < 1) return;
@@ -57,7 +56,7 @@ int run_client(char *address, long port) {
     if (return_code > 0) return return_code;
 
     if (server_socket < 0) {
-        printf("Wrong server socket");
+        printf("Wrong server socket\n");
         return 1;
     }
 
@@ -77,30 +76,17 @@ int run_client(char *address, long port) {
         printf(PROMT);
         getdelim(&input, &len, ';', stdin);
 
-        printf("Start request parse\n");
         Common__Request request = COMMON__REQUEST__INIT;
         int parsed_value = parse_request_string(input, &request);
-        print_request_info(&request);
         if (parsed_value != NORMAL_END) continue;
+        int return_send = send_request(server_socket, &request);
+        if (return_send != 0) continue;
 
-        len_send = common__request__get_packed_size(&request);
-        printf("Packed size: %zu\n", len_send);
+        printf("Message sent\n");
 
-        buf_send = malloc(len_send);
-        common__request__pack(&request, buf_send);
-
-        send_header(server_socket, len_send);
-        if (write(server_socket, buf_send, len_send) == -1) {
-            fprintf(stderr, ERROR_MESSAGE_SEND);
-            continue;
-        };
-
-        printf("Message sent");
-
-        msg_len = receive_header(server_socket);
-        msg_len = read(server_socket, buf, msg_len);
         Common__Response *response;
-        response = common__response__unpack(NULL, msg_len, buf);
+        return_send = receive_response(server_socket, &response);
+        if (return_send != 0) continue;
         parse_response(response);
         common__response__free_unpacked(response, NULL);
     }
