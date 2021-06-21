@@ -85,10 +85,16 @@
 - nmake (для компиляции protobuf под Windows)
 - protobuf (для редактирования proto формата обмена клиента и сервера)
 - protobuf-c (для редактирования proto формата обмена клиента и сервера)
-- lex
-- yacc
+- lex compiler (flex)
+- yacc compiler (bison)
 
-## Компиляция protobuf
+## protobuf
+### 1. Можно попробовать установить
+```shell
+sudo apt-get install -y libprotobuf-dev
+```
+
+### 2. Компиляция protobuf
 [github](https://github.com/protocolbuffers/protobuf)
 
 Я использовал Windows и компилировал с помощью cmake.
@@ -107,8 +113,14 @@ set(HAVE_ZLIB 1)
 ```cmake
 set(HAVE_ZLIB 0)
 ```
+## protobuf-c
+Есть два варианта
+### 1. Можно попробовать установить
+```shell
+sudo apt-get install -y protobuf-c-compiler libprotobuf-c-dev
+```
 
-## Компиляция protobuf-c
+### 2. Компиляция
 [github](https://github.com/protobuf-c/protobuf-c)
 
 Я использовал Windows и следующие команды
@@ -129,9 +141,9 @@ nmake install
 Файлы компилируются с помощью команды
 
 ```shell
-cd path/to/spo-lab-1.5/src
+cd path/to/spo-lab-1.5/src/common/
 #windows
-protoc --c_out=. common/*.proto
+protoc --c_out=. net.proto
 #linux
 protoc-c --c_out=. net.proto
 ```
@@ -146,10 +158,48 @@ bison -dy sql_parser.yacc
 ```
 
 
-## Сборка проекта
+## Сборка проекта 
+
+### Windows-bash / *nix
 1. Компиляция proto файлов
-2. компиляция lex спецификаций
-3. в корне проекта выполнить команду `cmake .`
+2. компиляция lex & yacc файлов
+3. `mkdir build && cd build`
+4. `cmake .`
+5. `make`
 
-## Архитектура файлов базы
+## Запуск
+### Сервер
+Здесь **3333** - порт, может быть указан любой свободный порт
+```shell
+./spo_lab_1_5 --mode=server 3333
+```
 
+### Клиент
+Здесь **127.0.0.1** - IP адрес, на котором работает сервер.
+**3333** - порт, который указан при запуске сервера
+```shell
+./spo_lab_1_5 --mode=client 127.0.0.1 3333
+```
+
+## Архитектура файла базы
+На представленной схеме то что отмечено тегами обозначено
+для разделенеия структур и понятности, в самом файле этого нет.
+
+spo-lab-db-format - специальная строка обозначающая формат файла.
+Используется для проверки при открытии.
+```
+|----------------------------------------------------|
+|<MetaDB> | spo-lab-db-format | created_time         |
+| updated_time | tables_count | ->first_table_offset |
+|</MetaDB>...........................................|
+|....................................................|
+|....|<MetaTable>....| ->first_column_offset         |
+| ->first_row_offset | ->next_table_offset           |
+|</MetaTable>........................................|
+|....|<MetaColumn>...| ->next_column_offset          |
+|</MetaColumn>.......................................|
+|....|<MetaRow>| row_size | ->first_data_offset      |
+| ->next_row_offset |</MetaRow>......................|
+|....................................................|
+|----------------------------------------------------|
+```
