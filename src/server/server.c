@@ -1,6 +1,9 @@
 #include "server.h"
 
-void *serve_client(void *socket_desc);
+int server_status = ACTIVE;
+int client_act_status = INACTIVE;
+
+void serve_client(int socket);
 
 void define_message_by_return_code(int return_code, Common__Response * response, char * success_message) {
     char * text;
@@ -51,12 +54,11 @@ void define_message_by_return_code(int return_code, Common__Response * response,
 }
 
 
-Common__Response execute_command_create (Common__Request * request) {
-    Common__Response response = COMMON__RESPONSE__INIT;
-    response.command_code = request->command_code;
+void execute_command_create (Common__Request * request, Common__Response * response) {
+    response->command_code = request->command_code;
     if (request->n_columns < 1) {
-        response.status_code = ERROR_END;
-        response.text = ERROR_MESSAGE_NO_COLUMNS;
+        response->status_code = ERROR_END;
+        response->text = ERROR_MESSAGE_NO_COLUMNS;
     }
     MetaColumn columns[request->n_columns];
     for(int i = 0; i < request->n_columns; i++) {
@@ -65,71 +67,119 @@ Common__Response execute_command_create (Common__Request * request) {
         columns[i].type = column_value->column_type_code;
         columns[i].is_key = column_value->is_key;
         columns[i].is_required = column_value->is_required;
-        strcpy_s(columns[i].name, TEXT_LENGTH_MAX, column_value->title);
+        strncpy(columns[i].name, column_value->title, TEXT_LENGTH_MAX );
     }
 
-    int return_code = create_table((char *) table, request->n_columns, columns);
-    response.status_code = return_code;
-    define_message_by_return_code(return_code, &response, MESSAGE_CREATED_SUCCESS);
-    return response;
+    int return_code = create_table(request->table_name, request->n_columns, columns);
+    response->status_code = return_code;
+    define_message_by_return_code(return_code, response, MESSAGE_CREATED_SUCCESS);
 }
 
-Common__Response execute_command(Common__Request * request) {
+
+void execute_command(Common__Request * request, Common__Response * response) {
     switch (request->command_code) {
         case COMMAND_CODE_CREATE:
-            return execute_command_create(request);
+            execute_command_create(request, response);
+            break;
+        default:
+            response->status_code=STATUS_ERROR;
+            response->text = "No such command";
+            break;
     }
 }
 
-void *serve_client(void *socket_desc) {
-    int sock = *(int *) socket_desc;
 
-    Common__Request *request;
+void serve_client(int socket) {
+    printf("Serve thread for socket %d created\n", socket);
     uint8_t buf[BUFSIZ];
     size_t msg_len;
-    while((msg_len = read_buffer (sock, BUFSIZ, buf )) != 0) {
+    do {
+        msg_len = receive_header(socket);
+        msg_len = read(socket, buf, msg_len);
+        if (msg_len < 1) {
+            printf("Cannot read message\n");
+        }
+        printf("Recieved %zu byte\ns", msg_len);
+        Common__Request * request;
         request = common__request__unpack(NULL, msg_len, buf);
-        Common__Response response;
+        print_request_info(request);
+
+        Common__Response response = COMMON__RESPONSE__INIT;
         if (request == NULL) {
             fprintf(stderr, "%s\n", ERROR_MESSAGE_UNPACK);
+            client_act_status = INACTIVE;
+            printf("deactivate client socket: %d\n", socket);
+            close(socket);
+            return;
         }
 
-        response = execute_command(request);
+        execute_command(request, &response);
         size_t len_send;
         void *buf_send;
         len_send = common__response__get_packed_size(&response);
         buf_send = malloc (len_send);
         common__response__pack(&response, buf_send);
-        if (write(sock, buf_send, len_send) < 0) break;
-    }
-    close(sock);
 
-    return NORMAL_END;
+        print_response_info(&response);
+        send_header(socket, len_send);
+        if (write(socket, buf_send, len_send) < 0) break;
+    } while (msg_len != 0);
+    close(socket);
+
+//    return NORMAL_END;
+}
+
+void send_connect(int socket) {
+    printf("Prepare check connection packet\n");
+    Common__Response response = COMMON__RESPONSE__INIT;
+    response.command_code = COMMAND_CODE_CONNECT;
+    response.status_code = STATUS_OK;
+    response.n_columns = 0;
+    response.text = "Connected";
+    void *buf;
+    unsigned long len;
+    len = common__response__get_packed_size(&response);
+    printf("Packet packed size: %lu\n", len);
+    buf = malloc(len);
+    common__response__pack(&response, buf);
+    printf("COMMAND CODE: %d\n", response.command_code);
+
+    send_header(socket, len);
+    write(socket, buf, len);
+    printf("Sent check connection packet\n");
+    free(buf);
 }
 
 int run_server(int port) {
     db_init("test.db");
     struct sockaddr_in server_address, client_addr;
     int server_socket;
+//    socket_nonblock(server_socket);
     int reuse = 1;
 
 
     size_t return_code = init_connection(&server_socket, &server_address, port, &reuse, MAX_CLIENTS_AMOUNT);
     if (return_code != NORMAL_END) return return_code;
 
-    int opt = 1;
-
-    int c = sizeof(struct sockaddr_in), client_sock;
-    while ((client_sock = accept(server_socket, (struct sockaddr *) &client_addr, (socklen_t *) &c))) {
-        char client_ip[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
-        printf("Connection accepted; Client IP: %s\n", client_ip);
-
-        int *new_sock = malloc(1);
-        *new_sock = client_sock;
-
-        pthread_t pthread;
-        pthread_create(&pthread, NULL, serve_client, (void *) (new_sock));
+    int client_sock;
+    while (server_status == ACTIVE) {
+        client_sock = accept(server_socket, NULL, NULL);
+        if (client_sock == -1) {
+            if (errno == FNONBLOCK) {
+                printf("No pending connections; sleeping for one second.\n");
+                sleep(1);
+            } else {
+                perror("error when accepting connection");
+                exit(1);
+            }
+        }
+        printf("Connection accepted; Client Socket: %d\n", client_sock);
+        send_connect(client_sock);
+        client_act_status = ACTIVE;
+        printf("Connection response sent\n");
+        serve_client(client_sock);
+//        pthread_t pthread;
+//        pthread_create(&pthread, NULL, serve_client, new_sock);
     }
     if (client_sock < 0) {
         perror("accept failed");

@@ -85,6 +85,8 @@
 - nmake (для компиляции protobuf под Windows)
 - protobuf (для редактирования proto формата обмена клиента и сервера)
 - protobuf-c (для редактирования proto формата обмена клиента и сервера)
+- lex
+- yacc
 
 ## Компиляция protobuf
 [github](https://github.com/protocolbuffers/protobuf)
@@ -128,12 +130,26 @@ nmake install
 
 ```shell
 cd path/to/spo-lab-1.5/src
+#windows
 protoc --c_out=. common/*.proto
+#linux
+protoc-c --c_out=. net.proto
 ```
+
+## Компиляция lex & yacc файлов
+Файлы компилируются с помощью команды
+
+```shell
+cd path/to/spo-lab-1.5/src/client/lexer
+flex sql_lexer.lex
+bison -dy sql_parser.yacc
+```
+
 
 ## Сборка проекта
 1. Компиляция proto файлов
-2. в корне проекта выполнить команду `cmake .`
+2. компиляция lex спецификаций
+3. в корне проекта выполнить команду `cmake .`
 
 ## Архитектура файлов базы
 

@@ -1,21 +1,36 @@
 #ifndef SPO_LAB_1_5_NET_H
 #define SPO_LAB_1_5_NET_H
 
-#define COMMAND_CODE_SELECT 0
-#define COMMAND_CODE_CREATE 1
-#define COMMAND_CODE_DROP 2
-#define COMMAND_CODE_DELETE 3
-#define COMMAND_CODE_INSERT 4
+#define COMMAND_CODE_CONNECT 20
+#define COMMAND_CODE_SELECT 21
+#define COMMAND_CODE_CREATE 22
+#define COMMAND_CODE_DROP 23
+#define COMMAND_CODE_DELETE 24
+#define COMMAND_CODE_INSERT 25
+#define COMMAND_CODE_UPDATE 26
+
+#define STATUS_OK 50
+#define STATUS_ERROR 51
+
+#define ACTIVE 1
+#define INACTIVE 1
+
+#define  _GNU_SOURCE
+#include <stdio.h>
 
 #include <stdint.h>
-#include "stdio.h"
 #include "stdbool.h"
 #include <stdlib.h>
 #include <unistd.h>
-
-#ifdef __WIN32__
-#include "windows.h"
-#include "ws2tcpip.h"
+#include <string.h>
+#ifdef __WIN32
+//#define NTDDI_VERSION NTDDI_WIN10
+//#define WINVER _WIN32_WINNT_WIN10
+#include "winsock2.h"
+#include "Ws2tcpip.h"
+#include "Windows.h"
+//#define inet_pton(a, b, c) ({ InetPtonW(a, b, c); })
+//#define inet_ntop(a, b, c, d) ({ InetNtopW(a, b, c, d); })
 #define SHUT_RDWR SD_BOTH
 #else
 #include <sys/types.h>
@@ -24,21 +39,39 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #endif
+#include <fcntl.h>
+#include "net.pb-c.h"
+#include <stdlib.h>
+#include "stdio.h"
 
 size_t init_connection(int *connect_socket, struct sockaddr_in *server_address, long port, int *reuse, int max_clients_amount);
 
 int socket_open(int *connect_socket);
 int socket_connect (const int *client_socket, struct sockaddr_in *server_address);
-int socket_check_connect(const int *socket);
 void socket_close(const int *socket);
 int socket_set_name(const int *connect_socket, int *reuse);
+int socket_check_connect(const int *socket);
 int socket_bind(const int *connect_socket, struct sockaddr_in *server_address);
 int socket_listen(const int *connect_socket, int max_clients_amount);
+int socket_nonblock(const int connect_socket);
 
 bool validate_ip(char * address);
 bool validate_port(int port);
 
-static size_t read_buffer (int socket, unsigned max_length, uint8_t *out);
+size_t read_buffer (int socket, void * out, unsigned max_length);
+size_t write_buffer (int socket, void * in, unsigned length);
+
+unsigned long receive_header(int socket);
+int send_header(int socket, unsigned long len);
+
+int send_request(Common__Request * request);
+int send_response(Common__Response * request);
+
+int send_request(Common__Request * request);
+int send_response(Common__Response * request);
+
+void print_response_info(Common__Response * response);
+void print_request_info(Common__Request * request);
 
 #define PRINTLN printf("\n")
 
@@ -52,6 +85,7 @@ static size_t read_buffer (int socket, unsigned max_length, uint8_t *out);
 #define ERROR_MESSAGE_SOCKET_SET_NAME "Set socket name failed"
 #define ERROR_MESSAGE_SOCKET_BIND "Bind socket failed"
 
+#define MESSAGE_SOCKET_CHECK "Check connection..."
 #define MESSAGE_CLIENTS_FULL "Amount of client is full"
 #define MESSAGE_SOCKET_OPEN "Open socket..."
 #define MESSAGE_SOCKET_CONNECT "Connect socket..."

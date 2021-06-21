@@ -1,7 +1,9 @@
 #include "client.h"
-#include <stdint.h>
 
-void print_response_info(Common__Response *response) {
+int server_socket;
+int client_status = ACTIVE;
+
+void show_response_info(Common__Response *response) {
     switch(response->command_code){
         case COMMAND_CODE_CREATE:
             printf("COMMAND CREATE status<%d> : %s", response->status_code, response->text);
@@ -43,7 +45,6 @@ int connect_server(char *ip, long port, int *socket) {
     return_code = socket_connect(socket, &server_address);
     if (return_code != NORMAL_END) return return_code;
 
-    return_code = socket_check_connect(socket);
     return return_code;
 }
 
@@ -52,37 +53,54 @@ int run_client(char *address, long port) {
     int amount = 0;
     bool work = true;
 
-    int server_socket;
     int return_code = connect_server(address, port, &server_socket);
     if (return_code > 0) return return_code;
 
-    Common__Response *response;
+    if (server_socket < 0) {
+        printf("Wrong server socket");
+        return 1;
+    }
+
+    int rc = socket_check_connect(&server_socket);
+    if (rc != NORMAL_END) exit(rc);
+
     uint8_t buf[BUFSIZ];
     size_t msg_len;
 
-    uint8_t * buf_send;
+    void * buf_send;
     size_t len_send;
 
     char *input;
     size_t len;
 
-    while (server_socket > 0) {
+    while (client_status == ACTIVE) {
         printf(PROMT);
-        getline(&input, &len, stdin);
+        getdelim(&input, &len, ';', stdin);
 
-        Common__Request request = parse_request_string(input);
+        printf("Start request parse\n");
+        Common__Request request = COMMON__REQUEST__INIT;
+        int parsed_value = parse_request_string(input, &request);
+        print_request_info(&request);
+        if (parsed_value != NORMAL_END) continue;
+
         len_send = common__request__get_packed_size(&request);
-        buf_send = malloc (len_send);
+        printf("Packed size: %zu\n", len_send);
+
+        buf_send = malloc(len_send);
         common__request__pack(&request, buf_send);
 
-        if (write(server_socket, buf_send, len_send) < 0) {
+        send_header(server_socket, len_send);
+        if (write(server_socket, buf_send, len_send) == -1) {
             fprintf(stderr, ERROR_MESSAGE_SEND);
             continue;
         };
 
-        msg_len = read_buffer (server_socket, BUFSIZ, buf);
-        response = common__response__unpack(NULL, msg_len, buf);
+        printf("Message sent");
 
+        msg_len = receive_header(server_socket);
+        msg_len = read(server_socket, buf, msg_len);
+        Common__Response *response;
+        response = common__response__unpack(NULL, msg_len, buf);
         parse_response(response);
         common__response__free_unpacked(response, NULL);
     }

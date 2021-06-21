@@ -6,8 +6,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#define max(a, b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
+#define max_value(a, b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
 
 #define PAGE_SIZE 1024
 
@@ -37,6 +39,7 @@
 
 #define ERROR_MESSAGE_NO_COLUMNS "Cannot execute create without columns"
 #define ERROR_MESSAGE_END "Error. Operation failed"
+#define ERROR_MESSAGE_META_ALLOC "Error. Cant alloc meta info"
 #define ERROR_MESSAGE_DATABASE_META_ALLOC "Error. Database meta alloc failed"
 #define ERROR_MESSAGE_DATABASE_FILE_OPEN "Error. Database file open failed"
 #define ERROR_MESSAGE_DATABASE_FORMAT "Error. Database file has incorrect format"
@@ -53,10 +56,6 @@
 #define MESSAGE_DELETED_SUCCESS "Successfully deleted"
 #define MESSAGE_UPDATED_SUCCESS "Successfully updated"
 #define MESSAGE_DROPPED_SUCCESS "Successfully dropped"
-
-
-#define ERROR_MESSAGE_DATABASE_TABLE_READ "Cannot read database table"
-
 
 typedef struct MetaDB {
     char format_text[FORMAT_TEXT_LENGTH];
@@ -94,11 +93,11 @@ typedef struct EntryToInsert {
     void *value_data;
 } EntryToInsert;
 
-const size_t SIZE_META_DB = sizeof(MetaDB);
-const size_t SIZE_META_TABLE = sizeof(MetaTable);
-const size_t SIZE_META_COLUMN = sizeof(MetaColumn);
-const size_t SIZE_META_ROW = sizeof(MetaRow);
-#define sizeof_max(a) ({ max(max(max(max(a, SIZE_META_DB), SIZE_META_TABLE), SIZE_META_COLUMN), SIZE_META_ROW); })
+#define SIZE_META_DB sizeof(MetaDB)
+#define SIZE_META_TABLE sizeof(MetaTable)
+#define SIZE_META_COLUMN sizeof(MetaColumn)
+#define SIZE_META_ROW sizeof(MetaRow)
+#define sizeof_max(a) ({ max_value(max_value(max_value(max_value(a, SIZE_META_DB), SIZE_META_TABLE), SIZE_META_COLUMN), SIZE_META_ROW); })
 
 
 void db_init(char *f_name);
