@@ -8,6 +8,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "../common/utils.h"
 
 #define max_value(a, b) ({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
 
@@ -89,7 +90,7 @@ typedef struct MetaRow {
 } MetaRow;
 
 typedef struct EntryToInsert {
-    char *column_name;
+    char column_name[TEXT_LENGTH_MAX];
     void *value_data;
 } EntryToInsert;
 
@@ -109,9 +110,9 @@ int insert_into_table(char *table_name, int items_count, EntryToInsert items[]);
 void find_table_row(
         MetaTable *table_meta,
         char *column_name,
-        void *search_value,
+        char *search_value,
         MetaRow **p_row_meta,
-        char **p_row_data,
+        char ***p_row_data,
         int offset
 );
 
@@ -119,9 +120,9 @@ void find_all_table_rows(
         char *table_name,
         char *column_name,
         void *search_value,
-        MetaColumn ***p_columns,
+        MetaColumn **p_columns,
         MetaRow ***p_rows,
-        char ***p_rows_data,
+        char ****p_rows_data,
         int *rows_count,
         int *amount_columns
 );
@@ -131,8 +132,6 @@ int find_last_table_row(MetaTable table_meta, MetaRow *p_target_row_meta, size_t
 int find_previous_table(size_t table_offset, MetaTable *p_target_table_meta, size_t *p_table_offset);
 
 int find_column_by_name(MetaTable table_meta, char *column_name, MetaColumn *p_target_column_meta, int *p_index_column);
-
-void parse_row(const char *row_data, int row_size, void *data[]);
 
 int delete_table(char *table_name);
 

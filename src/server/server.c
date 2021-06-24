@@ -5,9 +5,9 @@ int client_act_status = INACTIVE;
 
 void serve_client(int socket);
 
-void define_message_by_return_code(int return_code, Common__Response * response, char * success_message) {
-    char * text;
-    switch(return_code) {
+void define_message_by_return_code(int return_code, Common__Response *response, char *success_message) {
+    char *text;
+    switch (return_code) {
         case NORMAL_END:
             if (success_message != NULL) strcpy(response->text, success_message);
             break;
@@ -54,20 +54,20 @@ void define_message_by_return_code(int return_code, Common__Response * response,
 }
 
 
-void execute_command_create (Common__Request * request, Common__Response * response) {
+void execute_command_create(Common__Request *request, Common__Response *response) {
     response->command_code = request->command_code;
     if (request->n_columns < 1) {
         response->status_code = ERROR_END;
         response->text = ERROR_MESSAGE_NO_COLUMNS;
     }
     MetaColumn columns[request->n_columns];
-    for(int i = 0; i < request->n_columns; i++) {
-        Common__ColumnValue * column_value = request->columns[i];
+    for (int i = 0; i < request->n_columns; i++) {
+        Common__ColumnValue *column_value = request->columns[i];
         memset(&columns[i], 0, SIZE_META_COLUMN);
         columns[i].type = column_value->column_type_code;
         columns[i].is_key = column_value->is_key;
         columns[i].is_required = column_value->is_required;
-        strncpy(columns[i].name, column_value->title, TEXT_LENGTH_MAX );
+        strncpy(columns[i].name, column_value->title, TEXT_LENGTH_MAX);
     }
 
     int return_code = create_table(request->table_name, request->n_columns, columns);
@@ -76,13 +76,13 @@ void execute_command_create (Common__Request * request, Common__Response * respo
 }
 
 
-void execute_command(Common__Request * request, Common__Response * response) {
+void execute_command(Common__Request *request, Common__Response *response) {
     switch (request->command_code) {
         case COMMAND_CODE_CREATE:
             execute_command_create(request, response);
             break;
         default:
-            response->status_code=STATUS_ERROR;
+            response->status_code = STATUS_ERROR;
             response->text = "No such command";
             break;
     }
@@ -93,7 +93,7 @@ void serve_client(int socket) {
     printf("Serve thread for socket %d created\n", socket);
     do {
         printf("--------------WAIT NEW REQUEST FROM CLIENT: %d\n", socket);
-        Common__Request * request;
+        Common__Request *request;
         receive_request(socket, &request);
 
         if (request == NULL) {
@@ -133,11 +133,64 @@ void send_connect(int socket) {
     free(buf);
 }
 
+void test_db() {
+    printf("Initialize db test\n");
+    MetaColumn *columns = malloc(2 * SIZE_META_COLUMN);
+    memset(columns, 0, 2 * SIZE_META_COLUMN);
+    columns[0].type = COLUMN_TYPE_INT;
+    strcpy(columns[0].name, "id");
+    columns[0].is_required = true;
+    columns[0].is_key = true;
+
+    columns[1].type = COLUMN_TYPE_INT;
+    strcpy(columns[1].name, "one");
+    columns[1].is_required = false;
+    columns[1].is_key = false;
+
+    int rc = create_table("TableTest", 2, columns);
+    printf("Table created with code: %d\n", rc);
+
+
+    EntryToInsert * items = malloc(2 * sizeof(EntryToInsert));
+    strncpy(items[0].column_name, "id", TEXT_LENGTH_MAX);
+    items[0].value_data = "1";
+
+    strncpy(items[1].column_name, "one", TEXT_LENGTH_MAX);
+    items[1].value_data = "2";
+
+    rc = insert_into_table("TableTest", 2, items);
+    printf("Table INSERT with code: %d\n", rc);
+
+    MetaColumn *columns_res;
+    MetaRow **rows_res;
+    char ***data_res;
+    int rows_count;
+    int amount_columns;
+    find_all_table_rows(
+            "TableTest",
+            NULL, NULL,
+            &columns_res, &rows_res, &data_res,
+            &rows_count, &amount_columns
+    );
+
+
+    for (int i = 0; i < rows_count; ++i) {
+        printf("\n\nrow size: %d\n", (*rows_res)[i].row_size);
+        for (int j = 0; j < amount_columns; ++j) {
+            char str[TEXT_LENGTH_MAX];
+            strncpy(str, data_res[i][j], TEXT_LENGTH_MAX);
+            printf("COLUMN: %s IS_KEY: %d, VALUE: %s\n",
+                   columns_res[j].name, columns_res[j].is_key, str
+            );
+        }
+    }
+}
+
 int run_server(int port) {
     db_init("test.db");
+    test_db();
     struct sockaddr_in server_address, client_addr;
     int server_socket;
-//    socket_nonblock(server_socket);
     int reuse = 1;
 
 
@@ -161,8 +214,6 @@ int run_server(int port) {
         client_act_status = ACTIVE;
         printf("Connection response sent\n");
         serve_client(client_sock);
-//        pthread_t pthread;
-//        pthread_create(&pthread, NULL, serve_client, new_sock);
     }
     if (client_sock < 0) {
         perror("accept failed");
