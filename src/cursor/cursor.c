@@ -3,7 +3,6 @@
 #include <sys/stat.h>
 
 static char *file_name;
-static int tables_count;
 static MetaDB *meta_db;
 
 bool file_exists(char *filename) {
@@ -38,7 +37,6 @@ int update_meta_db() {
         return ERROR_DATABASE_FORMAT;
     }
 
-    tables_count = meta_db_target->tables_count;
     meta_db = meta_db_target;
     fclose(f);
     return NORMAL_END;
@@ -200,14 +198,20 @@ void write_db_part(void *value, size_t size, size_t offset) {
 }
 
 void write_column_meta(MetaColumn *column_meta, size_t offset) {
+    debugp("Write column meta\n");
+    if (DEBUG) print_column_meta(*column_meta);
     write_db_part(column_meta, SIZE_META_COLUMN, offset);
 }
 
 void write_table_meta(MetaTable *table_meta, size_t offset) {
+    debugp("Write table meta");
+    if (DEBUG) print_table_meta(*table_meta, offset);
     write_db_part(table_meta, SIZE_META_TABLE, offset);
 }
 
 void write_row_meta(MetaRow *row_meta, size_t offset) {
+    debugp("Write row meta\n");
+    if (DEBUG) print_row_meta(*row_meta);
     write_db_part(row_meta, SIZE_META_ROW, offset);
 }
 
@@ -223,40 +227,45 @@ void write_zeros_db_part(FILE *file, size_t size, size_t offset) {
 int find_table_by_name(char *table_name, MetaTable *p_target_table_meta, size_t *p_table_offset) {
     FILE *f;
     size_t table_offset = meta_db->first_table_offset;
-    debugf("first table offset: %zu\n", table_offset);
-    open_database_file(&f);
+    debugf("Find table by name: %s. first table offset: %zu\n", table_name, table_offset);
     while (table_offset > 0) {
+        open_database_file(&f);
         MetaTable table = *read_table_meta(f, table_offset);
-        debugf("read table meta name: %s, amount_columns: %zu amount_rows: %zu first_row_offset: %zu\n",
-               table.name, table.amount_columns, table.amount_rows, table.first_row_offset
-        );
-        if (!string_equals(table.name, table_name)) {
+        fclose(f);
+        if (DEBUG) print_table_meta(table, table_offset);
+        char name_a[TEXT_LENGTH_MAX];
+        char name_b[TEXT_LENGTH_MAX];
+        strncpy(name_a, table_name, TEXT_LENGTH_MAX);
+        strncpy(name_b, table.name, TEXT_LENGTH_MAX);
+        if (!string_equals(name_a, name_b)) {
             table_offset = table.next_table_offset;
             continue;
         }
         if (p_table_offset != NULL) *p_table_offset = table_offset;
         if (p_target_table_meta != NULL) *p_target_table_meta = table;
-        fclose(f);
+        debugp("__Found__\n");
         return NORMAL_END;
     }
-    fclose(f);
+    debugp("__Not Found__\n");
     return ERROR_TABLE_NOT_FOUND;
 }
 
-int find_last_table(MetaTable *p_target_table_meta, size_t *p_table_offset) {
+int find_last_table(MetaTable **p_target_table_meta, size_t *p_table_offset) {
     debugp("Find last table\n");
     if (meta_db->tables_count == 0) return ERROR_NO_TABLES;
     FILE *f;
-    open_database_file(&f);
+    MetaTable * table_meta;
     size_t offset = meta_db->first_table_offset;
-    MetaTable table_meta;
     for (int i = meta_db->tables_count; i > 0; --i) {
-        table_meta = *read_table_meta(f, offset);
-        if (i == 0) break;
-        offset = table_meta.next_table_offset;
+        open_database_file(&f);
+        table_meta = read_table_meta(f, offset);
+        if (DEBUG) print_table_meta(*table_meta, offset);
+        fclose(f);
+        if (i == 0 || table_meta->next_table_offset == 0) break;
+        offset = table_meta->next_table_offset;
     }
-    if (p_table_offset != NULL) *p_table_offset = offset;
-    if (p_target_table_meta != NULL) *p_target_table_meta = table_meta;
+    if (p_table_offset != NULL && table_meta != NULL) *p_table_offset = offset;
+    if (p_target_table_meta != NULL && table_meta != NULL) *p_target_table_meta = table_meta;
     debugp("Find last table end\n\n");
 
     return NORMAL_END;
@@ -266,12 +275,13 @@ int find_last_table_row(MetaTable table_meta, MetaRow *p_target_row_meta, size_t
     debugp("Start find last table row\n");
     if (meta_db->tables_count == 0) return ERROR_NO_TABLES;
     FILE *f;
-    open_database_file(&f);
     size_t offset = table_meta.first_row_offset;
     MetaRow * row_meta = malloc(sizeof(MetaRow));
     for (int i = table_meta.amount_rows; i > 0; --i) {
         debugf("Find last table row curr offset: %zu\n", offset);
+        open_database_file(&f);
         *row_meta = *read_row_meta(f, offset);
+        fclose(f);
         if (i == 0) break;
         if (row_meta->next_row_offset == 0) break;
         offset = row_meta->next_row_offset;
@@ -286,11 +296,12 @@ int find_last_table_row(MetaTable table_meta, MetaRow *p_target_row_meta, size_t
 int find_previous_table(size_t table_offset, MetaTable *p_target_table_meta, size_t *p_table_offset) {
     if (meta_db->tables_count == 0) return ERROR_NO_TABLES;
     FILE *f;
-    open_database_file(&f);
     size_t offset = meta_db->first_table_offset;
     MetaTable table_meta;
     for (int i = meta_db->tables_count; i > 0; --i) {
+        open_database_file(&f);
         table_meta = *read_table_meta(f, offset);
+        fclose(f);
         if (table_meta.next_table_offset == table_offset) break;
         if (i == 0) return ERROR_TABLE_NOT_FOUND;
         offset = table_meta.next_table_offset;
@@ -311,26 +322,23 @@ int find_column_by_name(
     size_t offset = table_meta.first_column_offset;
     debugf("Find column by name: %s, First column offset: %zu\n", column_name, offset);
 
-    open_database_file(&f);
     for (int i = 0; i < table_meta.amount_columns; ++i) {
-        MetaColumn column;
-        fseek(f, offset, SEEK_SET);
-        fread(&column, SIZE_META_COLUMN, 1, f);
+        open_database_file(&f);
+        MetaColumn * column = read_column_meta(f, offset);
+        fclose(f);
         debugf("Read COLUMN %d meta. NAME: %s TYPE: %zu Next_offset: %zu\n",
-               i, column.name, column.type, column.next_column_offset
+               i, column->name, column->type, column->next_column_offset
         );
 
-        if (column_name != NULL && !string_equals(column.name, column_name)) {
-            offset = column.next_column_offset;
+        if (column_name != NULL && !string_equals(column->name, column_name)) {
+            offset = column->next_column_offset;
             continue;
         }
         if (p_index_column != NULL) *p_index_column = i;
-        if (p_target_column_meta != NULL) *p_target_column_meta = column;
-        fclose(f);
+        if (p_target_column_meta != NULL) *p_target_column_meta = *column;
         debugp("__Found__\n");
         return NORMAL_END;
     }
-    fclose(f);
     debugp("__Not_Found__\n");
     return ERROR_COLUMN_NOT_FOUND;
 }
@@ -358,18 +366,20 @@ void find_table_row(
     }
 
     FILE *f;
-    open_database_file(&f);
     int tmp_offset = offset;
     size_t row_offset = table_meta->first_row_offset;
 
     for (int i = 0; i < table_meta->amount_rows; ++i) {
+        open_database_file(&f);
         MetaRow *row_meta = read_row_meta(f, row_offset);
+        fclose(f);
         if (tmp_offset-- > 0) {
             row_offset = row_meta->next_row_offset;
             continue;
         }
-
+        open_database_file(&f);
         char ** row_data = read_row_data(f, *row_meta);
+        fclose(f);
 
         debugp("Read row data finished\n");
 
@@ -385,13 +395,11 @@ void find_table_row(
             }
         }
 
-        fclose(f);
         if (p_row_meta != NULL) *p_row_meta = row_meta;
         if (p_row_data != NULL) *p_row_data = row_data;
         return;
     }
 
-    fclose(f);
     if (p_row_meta != NULL) *p_row_meta = NULL;
 }
 
@@ -498,12 +506,13 @@ int create_table(char *name, int amount_columns, MetaColumn columns[]) {
 
     MetaTable * last_table_meta = malloc(SIZE_META_TABLE);
     memset(last_table_meta, 0, SIZE_META_TABLE);
-    size_t last_table_offset;
+    size_t last_table_offset = 0;
 
-    return_code = find_last_table(last_table_meta, &last_table_offset);
-    if (return_code != ERROR_NO_TABLES) offset = last_table_offset;
-    debugf("Lat table found. Offset: %zu\n", last_table_offset);
-    if (DEBUG) print_table_meta(*last_table_meta, last_table_offset);
+    return_code = find_last_table(&last_table_meta, &last_table_offset);
+    debugf("Last table found. Offset: %zu\n", last_table_offset);
+    if (return_code != ERROR_NO_TABLES) offset = SIZE_META_DB;
+    if (DEBUG && last_table_offset != 0) print_table_meta(*last_table_meta, last_table_offset);
+    debugp("LAST_____\n\n");
 
     size_t first_col_offset = 0;
     for (int i = 0; i < amount_columns; ++i) {
@@ -542,16 +551,17 @@ int create_table(char *name, int amount_columns, MetaColumn columns[]) {
     alloc_db_free(SIZE_META_TABLE, &start, &len);
 
     write_table_meta(table_meta, start);
+    debugp("Created table:\n");
     print_table_meta(*table_meta, start);
 
     if (meta_db->tables_count == 0) set_first_table_offset(start);
     else {
+        debugf("Last table offset: %zu\n", last_table_offset);
         last_table_meta->next_table_offset = start;
         write_table_meta(last_table_meta, last_table_offset);
     }
-    set_tables_count(tables_count + 1);
+    set_tables_count(meta_db->tables_count + 1);
     free(table_meta);
-    if (DEBUG && meta_db->tables_count > 0) print_table_meta(*last_table_meta, last_table_offset);
     debugp("Table creation end\n");
     free(last_table_meta);
     print_info(*meta_db);

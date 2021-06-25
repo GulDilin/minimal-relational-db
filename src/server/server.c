@@ -6,7 +6,7 @@ int client_act_status = INACTIVE;
 void serve_client(int socket);
 
 void define_message_by_return_code(int return_code, Common__Response *response, char *success_message) {
-    debugf("Define message by rc: %d success: %s\n", return_code, success_message);
+    debugf("Define message by rc: %d\n", return_code);
     char *text;
     switch (return_code) {
         case NORMAL_END:
@@ -51,7 +51,7 @@ void define_message_by_return_code(int return_code, Common__Response *response, 
         default:
             text = "";
     }
-    if (text != NULL) strcpy(response->text, text);
+    if (text != NULL) response->text = text;
 }
 
 
@@ -78,7 +78,7 @@ void execute_command_create(Common__Request *request, Common__Response *response
     int return_code = create_table(request->table_name, request->n_columns, columns);
     debugf("Table creation finish code: %d\n", return_code);
     response->status_code = return_code;
-//    define_message_by_return_code(return_code, response, "Success created");
+    define_message_by_return_code(return_code, response, "Success created");
 }
 
 void execute_command_select(Common__Request *request, Common__Response *response) {
@@ -96,7 +96,7 @@ void execute_command_select(Common__Request *request, Common__Response *response
     int rows_count;
     int amount_columns;
     find_all_table_rows(
-            "TableTest",
+            request->table_name,
             NULL, NULL,
             &columns_res, &rows_res, &data_res,
             &rows_count, &amount_columns
@@ -117,7 +117,7 @@ void execute_command_select(Common__Request *request, Common__Response *response
     int col = 0;
     for (int i = 0; i < rows_count; ++i) {
         for (int j = 0; j < amount_columns; ++j) {
-            char str[TEXT_LENGTH_MAX];
+            char * str = malloc(TEXT_LENGTH_MAX);
             debugf("Col num: %d Col name: %s Value: %s\n", col, columns_res[j].name, data_res[i][j]);
             strncpy(str, data_res[i][j], TEXT_LENGTH_MAX);
             Common__ColumnValue *column_value = malloc(sizeof(Common__ColumnValue));
@@ -129,7 +129,6 @@ void execute_command_select(Common__Request *request, Common__Response *response
         }
     }
 
-//    int return_code = create_table(request->table_name, request->n_columns, columns);
     response->status_code = NORMAL_END;
     response->text = "SELECT FINISHED";
 }
