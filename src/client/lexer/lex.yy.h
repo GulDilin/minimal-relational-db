@@ -20,8 +20,22 @@ int yyparse(void);
 
 int yy_scan_string ( const char *yy_str  );
 
-int parse_string(const char* in, Common__Request * p_request);
+int parse_string(const char* in, struct ast_node * node);
+
+void print_ast_tree(struct ast_node * curr, int level);
 
 char * yytext;
+char *ctext;
+int yyval;
+
+
+struct ast_node {
+    int node_type;
+    struct ast_node * first;
+    struct ast_node * next;
+    char * text;
+};;
+
+int yyget_lineno  (void);
 
 #endif //SPO_LAB_1_5_LEX_YY_H

@@ -16,14 +16,15 @@ void show_response_info(Common__Response *response) {
 
 void print_column(Common__ColumnValue * column) {
     if (column->is_start) printf("\n");
-    printf("%s:\t%s", column->title, column->value);
+    printf("%s:\t%s\n", column->title, column->value);
 }
 
 void parse_response(Common__Response *response) {
     if (response->status_code != NORMAL_END) return;
-
+    int amount_columns = response->amount_columns;
     if(response->n_columns < 1) return;
     for (int i = 0; i < response->n_columns; ++i) {
+        if (amount_columns > 0 && i % amount_columns == 0) printf("------------------");
         print_column(response->columns[i]);
     }
 }

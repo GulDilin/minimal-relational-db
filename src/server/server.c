@@ -6,10 +6,11 @@ int client_act_status = INACTIVE;
 void serve_client(int socket);
 
 void define_message_by_return_code(int return_code, Common__Response *response, char *success_message) {
+    debugf("Define message by rc: %d success: %s\n", return_code, success_message);
     char *text;
     switch (return_code) {
         case NORMAL_END:
-            if (success_message != NULL) strcpy(response->text, success_message);
+            text = "Success";
             break;
         case ERROR_END:
             text = ERROR_MESSAGE_END;
@@ -60,7 +61,11 @@ void execute_command_create(Common__Request *request, Common__Response *response
         response->status_code = ERROR_END;
         response->text = ERROR_MESSAGE_NO_COLUMNS;
     }
-    MetaColumn columns[request->n_columns];
+
+    MetaColumn *columns = malloc(request->n_columns * SIZE_META_COLUMN);
+    memset(columns, 0, request->n_columns * SIZE_META_COLUMN);
+
+
     for (int i = 0; i < request->n_columns; i++) {
         Common__ColumnValue *column_value = request->columns[i];
         memset(&columns[i], 0, SIZE_META_COLUMN);
@@ -71,8 +76,62 @@ void execute_command_create(Common__Request *request, Common__Response *response
     }
 
     int return_code = create_table(request->table_name, request->n_columns, columns);
+    debugf("Table creation finish code: %d\n", return_code);
     response->status_code = return_code;
-    define_message_by_return_code(return_code, response, MESSAGE_CREATED_SUCCESS);
+//    define_message_by_return_code(return_code, response, "Success created");
+}
+
+void execute_command_select(Common__Request *request, Common__Response *response) {
+    response->command_code = request->command_code;
+//    bool select_all = false;
+//    if (request->n_columns == 0) select_all = true;
+    for (int i = 0; i < request->n_columns; i++) {
+        Common__ColumnValue *column_value = request->columns[i];
+        printf("Request column: %s\n", column_value->title);
+    }
+
+    MetaColumn *columns_res;
+    MetaRow **rows_res;
+    char ***data_res;
+    int rows_count;
+    int amount_columns;
+    find_all_table_rows(
+            "TableTest",
+            NULL, NULL,
+            &columns_res, &rows_res, &data_res,
+            &rows_count, &amount_columns
+    );
+    printf("Find all rows finished\n");
+    debugf("Amount rows: %d Cols: %d\n", rows_count, amount_columns);
+
+    if (rows_count == 0) {
+        response->status_code = ERROR_END;
+        response->text = "Not found";
+        return;
+    }
+    response->n_columns = rows_count * amount_columns;
+    response->amount_columns = amount_columns;
+    debugf("n_columns: %zu\n", response->n_columns);
+    response->columns = malloc(sizeof(Common__ColumnValue) * response->n_columns);
+
+    int col = 0;
+    for (int i = 0; i < rows_count; ++i) {
+        for (int j = 0; j < amount_columns; ++j) {
+            char str[TEXT_LENGTH_MAX];
+            debugf("Col num: %d Col name: %s Value: %s\n", col, columns_res[j].name, data_res[i][j]);
+            strncpy(str, data_res[i][j], TEXT_LENGTH_MAX);
+            Common__ColumnValue *column_value = malloc(sizeof(Common__ColumnValue));
+            common__column_value__init(column_value);
+            column_value->title = columns_res[j].name;
+            column_value->value = str;
+            (response->columns)[col] = column_value;
+            col++;
+        }
+    }
+
+//    int return_code = create_table(request->table_name, request->n_columns, columns);
+    response->status_code = NORMAL_END;
+    response->text = "SELECT FINISHED";
 }
 
 
@@ -80,6 +139,9 @@ void execute_command(Common__Request *request, Common__Response *response) {
     switch (request->command_code) {
         case COMMAND_CODE_CREATE:
             execute_command_create(request, response);
+            break;
+        case COMMAND_CODE_SELECT:
+            execute_command_select(request, response);
             break;
         default:
             response->status_code = STATUS_ERROR;
@@ -134,7 +196,7 @@ void send_connect(int socket) {
 }
 
 void test_db() {
-    printf("Initialize db test\n");
+    printf("___________START DB TEST__________\n");
     MetaColumn *columns = malloc(2 * SIZE_META_COLUMN);
     memset(columns, 0, 2 * SIZE_META_COLUMN);
     columns[0].type = COLUMN_TYPE_INT;
@@ -150,16 +212,23 @@ void test_db() {
     int rc = create_table("TableTest", 2, columns);
     printf("Table created with code: %d\n", rc);
 
-
-    EntryToInsert * items = malloc(2 * sizeof(EntryToInsert));
+    EntryToInsert *items = malloc(2 * sizeof(EntryToInsert));
     strncpy(items[0].column_name, "id", TEXT_LENGTH_MAX);
     items[0].value_data = "1";
 
     strncpy(items[1].column_name, "one", TEXT_LENGTH_MAX);
     items[1].value_data = "2";
 
+    printf("\n NEW Table INSERT\n");
     rc = insert_into_table("TableTest", 2, items);
-    printf("Table INSERT with code: %d\n", rc);
+    printf("\nTable INSERT with code: %d\n", rc);
+
+    items[0].value_data = "3";
+    items[1].value_data = "4";
+
+    printf("\n NEW Table INSERT\n");
+    rc = insert_into_table("TableTest", 2, items);
+    printf("\nTable INSERT with code: %d\n\n", rc);
 
     MetaColumn *columns_res;
     MetaRow **rows_res;
@@ -184,6 +253,11 @@ void test_db() {
             );
         }
     }
+
+//    rc = delete_table("TableTest");
+    printf("Table DELETE with code: %d\n", rc);
+    printf("___________END DB TEST__________\n\n");
+
 }
 
 int run_server(int port) {
@@ -205,7 +279,7 @@ int run_server(int port) {
                 printf("No pending connections; sleeping for one second.\n");
                 sleep(1);
             } else {
-                perror("error when accepting connection");
+                perror("error when accepting connection\n");
                 exit(1);
             }
         }

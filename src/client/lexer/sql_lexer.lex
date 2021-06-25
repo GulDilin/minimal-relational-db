@@ -2,8 +2,9 @@
 #include <stdio.h>
 #include "y.tab.h"
 #include "../../common/net.pb-c.h"
-extern int yylval;
 extern char *yytext;
+char *ctext;
+extern int yyval;
 %}
 
 %%
@@ -13,17 +14,17 @@ insert					return INSERT;
 update					return UPDATE;
 delete					return DELETE;
 table					return TABLE;
-number					return NUMBER;
-text					return TEXT;
+number					return NUMBER_TYPE;
+text					return TEXT_TYPE;
 from					return FROM;
 where					return WHERE;
 and						return AND;
-\*						return *yytext;
+\*						return ALL;
 \(				        return *yytext;
 \)				        return *yytext;
 [,]						return *yytext;
 [=]						return *yytext;
-[a-zA-Z][a-zA-Z0-9]*	return IDENTIFIER;
+[a-zA-Z][a-zA-Z0-9]*	{ printf("text: %s\n", yytext); yylval.text = yytext; ctext = yytext; return IDENTIFIER; }
 [ \t\r\n;]+		        /* ignore whitespace */;
 %%
 

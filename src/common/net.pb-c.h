@@ -61,15 +61,15 @@ struct  _Common__Response
 {
   ProtobufCMessage base;
   int32_t status_code;
-  protobuf_c_boolean has_command_code;
   int32_t command_code;
   size_t n_columns;
   Common__ColumnValue **columns;
   char *text;
+  int32_t amount_columns;
 };
 #define COMMON__RESPONSE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&common__response__descriptor) \
-    , 0, 0,0, 0,NULL, NULL }
+    , 0, 0, 0,NULL, NULL, 0 }
 
 
 /* Common__ColumnValue methods */

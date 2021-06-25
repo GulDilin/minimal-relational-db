@@ -11,7 +11,7 @@
 size_t getline(char **lineptr, size_t *n, FILE *stream);
 #endif
 
-#define DEBUG 0
+#define DEBUG 1
 #define debugf(f_, ...) ({ if (DEBUG) { printf((f_), __VA_ARGS__); } })
 #define debugp(f_) ({ if (DEBUG) { printf(f_); } })
 #endif //SPO_LAB_1_5_UTILS_H

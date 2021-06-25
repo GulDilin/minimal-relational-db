@@ -9,6 +9,9 @@
 #define COMMAND_CODE_INSERT 25
 #define COMMAND_CODE_UPDATE 26
 
+#define COLUMN_TYPE_TEXT_N   0
+#define COLUMN_TYPE_INT_N    1
+
 #define STATUS_OK 50
 #define STATUS_ERROR 51
 

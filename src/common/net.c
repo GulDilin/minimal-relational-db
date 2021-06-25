@@ -197,8 +197,8 @@ void print_request_info(Common__Request * request) {
 }
 
 void print_response_info(Common__Response * response) {
-    printf("Response info:\n\tStatus code: %d\n\tCommand code: %d\n\tN columns: %zu\n\tText: %s\n\n",
-          response->status_code ,response->command_code, response->n_columns, response->text);
+    printf("Response info:\n\tStatus code: %d\n\tCommand code: %d\n\tAmount columns: %d\n\tN columns: %zu\n\tText: %s\n\n",
+          response->status_code ,response->command_code, response->amount_columns, response->n_columns, response->text);
 }
 
 bool validate_ip(char * address) {
