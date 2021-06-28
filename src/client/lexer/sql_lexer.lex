@@ -24,7 +24,7 @@ and						return AND;
 \)				        return *yytext;
 [,]						return *yytext;
 [=]						return *yytext;
-[a-zA-Z][a-zA-Z0-9]*	{ printf("text: %s\n", yytext); yylval.text = yytext; ctext = yytext; return IDENTIFIER; }
+[a-zA-Z][a-zA-Z0-9]*	return IDENTIFIER;
 [ \t\r\n;]+		        /* ignore whitespace */;
 %%
 
