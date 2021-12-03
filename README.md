@@ -69,10 +69,137 @@
 - сериалайзер
 - десиреалайзер
 
-## Клиент
+### Клиент
 - синтаксический анализатор
 - сериалайзер
 - десиреалайзер
 - модуль обмена
 - protobuf конвертер
 
+## Подготовка для разработки
+
+### Требования
+- c compiler
+- cmake
+- make
+- nmake (для компиляции protobuf под Windows)
+- protobuf (для редактирования proto формата обмена клиента и сервера)
+- protobuf-c (для редактирования proto формата обмена клиента и сервера)
+- lex compiler (flex)
+- yacc compiler (bison)
+
+## protobuf
+### 1. Можно попробовать установить
+```shell
+sudo apt-get install -y libprotobuf-dev
+```
+
+### 2. Компиляция protobuf
+[github](https://github.com/protocolbuffers/protobuf)
+
+Я использовал Windows и компилировал с помощью cmake.
+[instructions](https://github.com/protocolbuffers/protobuf/blob/master/cmake/README.md)
+В моём случае всё сработало за исключением подключения zlib.
+
+**При использовании Windows есть проблема с zlib, поэтому в 
+CMakeLists.txt пришлось отредактировать строку**
+
+Для исправления этого я принудительно отключил использование zlib заменив строку
+в файле `path/to/protobuf/cmake/CMakeLists.txt`
+```cmake
+set(HAVE_ZLIB 1)
+```
+на 
+```cmake
+set(HAVE_ZLIB 0)
+```
+## protobuf-c
+Есть два варианта
+### 1. Можно попробовать установить
+```shell
+sudo apt-get install -y protobuf-c-compiler libprotobuf-c-dev
+```
+
+### 2. Компиляция
+[github](https://github.com/protobuf-c/protobuf-c)
+
+Я использовал Windows и следующие команды
+```shell
+cd path/to/protobuf-c/build-cmake
+mkdir build
+cd build
+cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+nmake
+nmake install
+```
+
+Теперь скомпилированные файлы находятся в `path/to/protobuf-c/install`
+
+Необходимо добавить `path/to/protobuf-c/bin` в переменную PATH
+
+## Компиляция proto файлов
+Файлы компилируются с помощью команды
+
+```shell
+cd path/to/spo-lab-1.5/src/common/
+#windows
+protoc --c_out=. net.proto
+#linux
+protoc-c --c_out=. net.proto
+```
+
+## Компиляция lex & yacc файлов
+Файлы компилируются с помощью команды
+
+```shell
+cd path/to/spo-lab-1.5/src/client/lexer
+flex sql_lexer.lex
+bison -dy sql_parser.yacc
+```
+
+
+## Сборка проекта 
+
+### Windows-bash / *nix
+1. Компиляция proto файлов
+2. компиляция lex & yacc файлов
+3. `mkdir build && cd build`
+4. `cmake .`
+5. `make`
+
+## Запуск
+### Сервер
+Здесь **3333** - порт, может быть указан любой свободный порт
+```shell
+./spo_lab_1_5 --mode=server 3333
+```
+
+### Клиент
+Здесь **127.0.0.1** - IP адрес, на котором работает сервер.
+**3333** - порт, который указан при запуске сервера
+```shell
+./spo_lab_1_5 --mode=client 127.0.0.1 3333
+```
+
+## Архитектура файла базы
+На представленной схеме то что отмечено тегами обозначено
+для разделенеия структур и понятности, в самом файле этого нет.
+
+spo-lab-db-format - специальная строка обозначающая формат файла.
+Используется для проверки при открытии.
+```
+|----------------------------------------------------|
+|<MetaDB> | spo-lab-db-format | created_time         |
+| updated_time | tables_count | ->first_table_offset |
+|</MetaDB>...........................................|
+|....................................................|
+|....|<MetaTable>....| ->first_column_offset         |
+| ->first_row_offset | ->next_table_offset           |
+|</MetaTable>........................................|
+|....|<MetaColumn>...| ->next_column_offset          |
+|</MetaColumn>.......................................|
+|....|<MetaRow>| row_size | ->first_data_offset      |
+| ->next_row_offset |</MetaRow>......................|
+|....................................................|
+|----------------------------------------------------|
+```
